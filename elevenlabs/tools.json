@@ -1,0 +1,125 @@
+[
+  {
+    "type": "webhook",
+    "name": "lookup_device",
+    "description": "Find an employee's registered devices by work email, or a single device by asset tag (e.g. NW-1042). Call this before creating a ticket.",
+    "response_timeout_secs": 10,
+    "api_schema": {
+      "url": "{{BASE_URL}}/tools/lookup_device",
+      "method": "POST",
+      "request_headers": { "X-Tool-Secret": { "secret": "TOOL_SECRET" } },
+      "request_body_schema": {
+        "type": "object",
+        "properties": {
+          "email": { "type": "string", "description": "Caller's work email, normalised (e.g. priya.shah@northwind.example)." },
+          "asset_tag": { "type": "string", "description": "Asset tag from the device sticker, e.g. NW-1042." },
+          "conversation_id": { "type": "string", "dynamic_variable": "system__conversation_id" }
+        },
+        "required": []
+      }
+    }
+  },
+  {
+    "type": "webhook",
+    "name": "create_ticket",
+    "description": "Open a support ticket for a device. Required before any device action. Safe to retry: returns the existing open ticket for the same device in this call.",
+    "response_timeout_secs": 10,
+    "api_schema": {
+      "url": "{{BASE_URL}}/tools/create_ticket",
+      "method": "POST",
+      "request_headers": { "X-Tool-Secret": { "secret": "TOOL_SECRET" } },
+      "request_body_schema": {
+        "type": "object",
+        "properties": {
+          "device_id": { "type": "string", "description": "device_id from lookup_device, e.g. DEV-001." },
+          "caller_email": { "type": "string", "description": "The verified caller's work email." },
+          "summary": { "type": "string", "description": "One sentence describing the problem." },
+          "category": { "type": "string", "enum": ["hardware", "software", "access", "lost_or_stolen", "other"] },
+          "priority": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+          "conversation_id": { "type": "string", "dynamic_variable": "system__conversation_id" }
+        },
+        "required": ["device_id", "caller_email", "summary", "category"]
+      }
+    }
+  },
+  {
+    "type": "webhook",
+    "name": "get_ticket",
+    "description": "Look up the status and latest note of an existing ticket.",
+    "response_timeout_secs": 10,
+    "api_schema": {
+      "url": "{{BASE_URL}}/tools/get_ticket",
+      "method": "POST",
+      "request_headers": { "X-Tool-Secret": { "secret": "TOOL_SECRET" } },
+      "request_body_schema": {
+        "type": "object",
+        "properties": {
+          "ticket_id": { "type": "string", "description": "Ticket number, e.g. INC-1001." },
+          "conversation_id": { "type": "string", "dynamic_variable": "system__conversation_id" }
+        },
+        "required": ["ticket_id"]
+      }
+    }
+  },
+  {
+    "type": "webhook",
+    "name": "request_device_action",
+    "description": "Step 1 of 2 for any device action. Does NOT perform the action. Returns a readback you must read to the caller word for word, and a pending_action_id.",
+    "response_timeout_secs": 10,
+    "api_schema": {
+      "url": "{{BASE_URL}}/tools/request_device_action",
+      "method": "POST",
+      "request_headers": { "X-Tool-Secret": { "secret": "TOOL_SECRET" } },
+      "request_body_schema": {
+        "type": "object",
+        "properties": {
+          "device_id": { "type": "string" },
+          "action": { "type": "string", "enum": ["restart", "lock", "wipe"] },
+          "ticket_id": { "type": "string", "description": "Open ticket for this device." },
+          "caller_email": { "type": "string", "description": "The verified caller's work email." },
+          "conversation_id": { "type": "string", "dynamic_variable": "system__conversation_id" }
+        },
+        "required": ["device_id", "action", "ticket_id", "caller_email"]
+      }
+    }
+  },
+  {
+    "type": "webhook",
+    "name": "confirm_device_action",
+    "description": "Step 2 of 2. Call only after the caller has answered the readback. Pass their exact words; the server decides whether it counts as confirmation.",
+    "response_timeout_secs": 20,
+    "api_schema": {
+      "url": "{{BASE_URL}}/tools/confirm_device_action",
+      "method": "POST",
+      "request_headers": { "X-Tool-Secret": { "secret": "TOOL_SECRET" } },
+      "request_body_schema": {
+        "type": "object",
+        "properties": {
+          "pending_action_id": { "type": "string", "description": "From request_device_action." },
+          "caller_utterance": { "type": "string", "description": "The caller's reply, verbatim. Never paraphrase or invent it." },
+          "conversation_id": { "type": "string", "dynamic_variable": "system__conversation_id" }
+        },
+        "required": ["pending_action_id", "caller_utterance"]
+      }
+    }
+  },
+  {
+    "type": "webhook",
+    "name": "cancel_device_action",
+    "description": "Cancel a pending device action when the caller hesitates or changes their mind.",
+    "response_timeout_secs": 10,
+    "api_schema": {
+      "url": "{{BASE_URL}}/tools/cancel_device_action",
+      "method": "POST",
+      "request_headers": { "X-Tool-Secret": { "secret": "TOOL_SECRET" } },
+      "request_body_schema": {
+        "type": "object",
+        "properties": {
+          "pending_action_id": { "type": "string" },
+          "conversation_id": { "type": "string", "dynamic_variable": "system__conversation_id" }
+        },
+        "required": ["pending_action_id"]
+      }
+    }
+  }
+]
